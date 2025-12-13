@@ -3,76 +3,16 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"math/rand"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+	"tic-tac-go/board"
+	"tic-tac-go/player"
 )
 
 
-type Player struct {
-	Name string
-	Token string
-	IsCurrentPlayer bool
-}
-
-func InitBoard() [3][3]string {
-return [3][3]string{{"", "", ""}, {"", "", ""}, {"", "", ""}}
-}
-
-func InitPlayers() [2]Player{
-scanner := bufio.NewScanner(os.Stdin)
-
-icons := [2]string{"g", "o"}
-var players [2]Player
-var playerNames []string
-
-startingPlayerIndex := rand.Intn(2)
-for i := range players {
-	playerIcon := icons[i]
-	fmt.Print("Enter player ", playerIcon, "'s name: ")
-	for scanner.Scan() {
-		playerNames = append(playerNames, scanner.Text())
-		break
-	}
-	
-	players[i] = Player{playerNames[i], playerIcon, i == startingPlayerIndex}
-}
-
-return players
-}
-
-func DrawBoard(board [3][3]string) {
-	fmt.Println()
-	boardGrid := [5][5]string {
-		{" ", "|", " ", "|", " "},
-		{"-", "+", "-", "+", "-"},
-		{" ", "|", " ", "|", " "},
-		{"-", "+", "-", "+", "-"},
-		{" ", "|", " ", "|", " "},
-	}
-
-	for x := range board {
-		for y := range board[x] {
-			val := board[x][y]
-			if val == "" {
-				val = " "
-			}
-			boardGrid[x*2][y*2] = val
-		}
-	}
-
-	for _, row:= range boardGrid {
-		for _, cell := range row {
-			fmt.Print(cell)
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-}
-
-func IsGameOver(board [3][3]string, players [2]Player) bool {
+func IsGameOver(b board.Board, players [2]player.Player) bool {
 	magicSquare := [3][3]int{
 		{2, 7, 6},
 		{9, 5, 1},
@@ -94,9 +34,9 @@ func IsGameOver(board [3][3]string, players [2]Player) bool {
 	for _, player := range players {
 		var playerMoves []int
 
-		for x := range board {
-			for y := range board[x] {
-				if board[x][y] == player.Token {
+		for x := range b {
+			for y := range b[x] {
+				if b.Get(x, y) == player.Token {
 					playerMoves = append(playerMoves, magicSquare[x][y])
 				}
 			}
@@ -122,77 +62,64 @@ func hasAll(moves []int, combo []int) bool {
 	return count == 3
 }
 
-func IsDraw(board [3][3]string) bool {
-for x := range board {
-	for y := range board[x] {
-		if board[x][y] == "" {
-			return false
+func IsDraw(b board.Board) bool {
+	for x := 0; x < 3; x++ {
+		for y := 0; y < 3; y++ {
+			if b.GetRaw(x, y) == "" {
+				return false
+			}
 		}
 	}
-}
-return true
-}
-
-
-func GetPlayerMove(board [3][3]string, currentPlayer Player) (int, int) {
-scanner := bufio.NewScanner(os.Stdin)
-
-for {
-	fmt.Print(currentPlayer.Name, "'s turn. Enter move in format x,y: ")
-	if !scanner.Scan() {
-		fmt.Println("Failed to read input")
-		continue
-	}
-
-	move := scanner.Text()
-	coords := strings.Split(move, ",")
-	if len(coords) != 2 {
-		fmt.Println("Invalid input format. Please enter in x,y format.")
-		continue
-	}
-
-	x64, err := strconv.ParseInt(strings.TrimSpace(coords[0]), 10, 0)
-	if err != nil || x64 < 0 || x64 > 2 {
-		fmt.Println("Invalid x coordinate. Must be 0, 1, or 2.")
-		continue
-	}
-
-	y64, err := strconv.ParseInt(strings.TrimSpace(coords[1]), 10, 0)
-	if err != nil || y64 < 0 || y64 > 2 {
-		fmt.Println("Invalid y coordinate. Must be 0, 1, or 2.")
-		continue
-	}
-
-	x, y := int(x64), int(y64)
-
-	if board[x][y] != "" {
-		fmt.Println("Cell is not empty, choose another one!")
-		DrawBoard(board)
-		continue
-	}
-
-	return x, y
-}
+	return true
 }
 
-func GetCurrentPlayer(players [2]Player) Player {
-	var currentPlayer Player 
-	for _, player := range players {
-		if player.IsCurrentPlayer {
-			currentPlayer = player
+
+func GetPlayerMove(b board.Board, currentPlayer player.Player) (int, int) {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for {
+		fmt.Print(currentPlayer.Name, "'s turn. Enter move in format x,y: ")
+		if !scanner.Scan() {
+			fmt.Println("Failed to read input")
+			continue
 		}
-	}
-	return currentPlayer
-	}
 
-func SwitchPlayersTurn(players [2]Player) [2]Player {
-	players[0].IsCurrentPlayer = !players[0].IsCurrentPlayer
-	players[1].IsCurrentPlayer = !players[1].IsCurrentPlayer
-	return players
+		move := scanner.Text()
+		coords := strings.Split(move, ",")
+		if len(coords) != 2 {
+			fmt.Println("Invalid input format. Please enter in x,y format.")
+			continue
+		}
+
+		x64, err := strconv.ParseInt(strings.TrimSpace(coords[0]), 10, 0)
+		if err != nil || x64 < 0 || x64 > 2 {
+			fmt.Println("Invalid x coordinate. Must be 0, 1, or 2.")
+			continue
+		}
+
+		y64, err := strconv.ParseInt(strings.TrimSpace(coords[1]), 10, 0)
+		if err != nil || y64 < 0 || y64 > 2 {
+			fmt.Println("Invalid y coordinate. Must be 0, 1, or 2.")
+			continue
+		}
+
+		x, y := int(x64), int(y64)
+		row := 2 - y    // flip y to match row index
+		col := x        // x is column
+
+
+		if b.GetRaw(row, col) != "" {
+			fmt.Println("Cell is not empty, choose another one!")
+			b.Draw()
+			continue
+		}
+
+		return row, col
+	}
 }
 
-func DrawStartingScreen(board [3][3]string) {
+func DrawStartingScreen(b board.Board) {
 	fmt.Println()
 	fmt.Println("Game starting!")
-	DrawBoard(board)
+	b.Draw()
 }

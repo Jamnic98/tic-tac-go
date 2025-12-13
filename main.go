@@ -2,33 +2,35 @@ package main
 
 import (
 	"fmt"
+	"tic-tac-go/board"
+	"tic-tac-go/player"
 	"tic-tac-go/utils"
 )
 
 func main() {
 	// init game conditions
-	players := utils.InitPlayers()
-	board := utils.InitBoard()
+	players := player.Init()
+	b := board.Init()
 
-	utils.DrawStartingScreen(board)
+	utils.DrawStartingScreen(b)
 	
 	// run the game loop
 	for {
-		currentPlayer := utils.GetCurrentPlayer(players)
-		x, y := utils.GetPlayerMove(board, currentPlayer)
-		board[x][y] = currentPlayer.Token
+		currentPlayer := player.GetCurrentPlayer(players)
+		x, y := utils.GetPlayerMove(b, currentPlayer)
+		b.Place(x, y, currentPlayer.Token)
 	
-		utils.DrawBoard(board)
+		b.Draw()
 	
-		if utils.IsGameOver(board, players) {
+		if utils.IsGameOver(b, players) {
 			fmt.Println(currentPlayer.Name, "wins!")
 			break
 		}
-		if utils.IsDraw(board) {
+		if utils.IsDraw(b) {
 			fmt.Println("It's a draw!")
 			break
 		}
 	
-		players = utils.SwitchPlayersTurn(players)
+		players = player.SwitchPlayersTurn(players)
 	}
 }
